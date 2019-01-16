@@ -1,0 +1,160 @@
+%% A*路径规划算法Matlab实现【参考资料：http://www.huqj.top/article?id=24】
+
+function [open,close]=Astar(map)
+    %% 1.初始化
+    [row,col]=size(map);%其中row为行，col为列
+    close=struct('row',-1,'col',-1,'g',0,'h',0); %开启列表结构体数组
+    closelen=1;
+    open=struct('row',-1,'col',-1,'g',-1,'h',-1); %关闭列表结构体数组
+    openlen=0;
+    
+    %找到障碍物
+    bindex=1;
+    for k=1:row
+        for j=1:col
+            if map(k,j)==1
+                barrierrow(bindex)=-k;
+                barriercol(bindex)=j;
+                bindex=bindex+1;
+            end
+        end
+    end
+    
+    %找到终点
+    for i=1:row
+        for j=1:col
+            if map(i,j)==2
+                endrow=i;
+                endcol=j;
+                break;
+            end
+        end
+    end
+    
+    %找到起点，并添加到close列表
+    for i=1:row
+        for j=1:col
+          if map(i,j)==5
+              startrow=i;
+              startcol=j;
+              close(1).row=i;
+              close(1).col=j;
+              break;
+          end
+        end
+    end
+    
+    %open列表添加节点
+%     direct=[0 -1; 0 1; -1 0; 1 0];%直线相邻4个格（相当于只能直走，不能斜着走）
+    direct=[0 -1; 0 1; -1 -1; 1 1; -1 1; 1 -1;];%相邻6个格（不能直线左右走）
+    for i=1:4
+        if all( [close(1).row,close(1).col]+direct(i,:)>0 ) ...
+        && close(1).row+direct(i,1)<=row && close(1).col+direct(i,2)<=col ...
+        && map(close(1).row+direct(i,1),close(1).col+direct(i,2))~=1
+            open(openlen+1).row=close(1).row+direct(i,1);
+            open(openlen+1).col=close(1).col+direct(i,2);
+            openlen=openlen+1;
+            %计算所添加节点对应的g（距离起点的代价）和h（距离终点的代价）
+            open(openlen).g=1;
+            open(openlen).h=abs(endrow-open(openlen).row)+abs(endcol-open(openlen).col);%这里使用了曼哈顿距离
+        end
+    end
+    
+    %% 2.开始寻路
+    while openlen>0
+        %找到open列表中F的最小值对应的节点，其中F=G+H
+        min = realmax; %返回计算机所能表示的正的最大（双精度）浮点数。
+        for i=1:openlen
+            if open(i).g+open(i).h<=min
+                min=open(i).g+open(i).h;
+                sindex=i;
+            end
+        end
+
+        %将F最小值对应节点作为下一步节点，从open列表中删除&添加到close列表中
+        close(closelen+1).row=open(sindex).row;
+        close(closelen+1).col=open(sindex).col;
+        close(closelen+1).g=open(sindex).g;
+        close(closelen+1).h=open(sindex).h;
+        closelen=closelen+1;
+        
+%         open(sindex)=[];
+%         openlen=openlen-1;
+        
+%         openlen=openlen-1;
+%         for i=sindex:openlen
+%             open(i)=open(i+1);
+%         end
+%         open(openlen+1)=[];
+
+        openlen=0;
+
+        %这里重新复制了原地图
+        pause(0.1)%暂停0.1s
+        img = zeros(row,col);
+        %找到对应的起点
+        img(startrow,startcol)=10;
+        %找到对应的障碍物
+        for k=1:row
+            for j=1:col
+                if map(k,j)==1
+                    img(k,j)=5;
+                end
+            end
+        end
+        %找到对应的close列表
+        for k=2:closelen
+            img(close(k).row,close(k).col)=3;
+        end
+        %找到对应的终点
+        img(endrow,endcol)=10;
+        imagesc(img*10);%画图函数
+
+        %如果到达终点则停止
+        if close(closelen).row == endrow && close(closelen).col==endcol
+            break;
+        end
+
+        %open列表添加节点
+        for i=1:4
+            if all([close(closelen).row,close(closelen).col]+direct(i,:)>0) ...
+            && close(closelen).row+direct(i,1)<=row && close(closelen).col+direct(i,2)<=col ...
+            && map(close(closelen).row+direct(i,1), close(closelen).col+direct(i,2))~=1
+               %判断该节点是否已经存在close列表中
+               flag=false;
+               for m=1:closelen
+                   if close(m).row==close(closelen).row+direct(i,1) ...
+                   && close(m).col==close(closelen).col+direct(i,2)
+                       flag=true;
+                       break;
+                   end
+               end
+               %已经存在close中的话，则退出当前循环
+               if flag
+                    continue;
+               end
+
+               %判断该节点是否已经存在open列表中
+               flag=false;
+               for m=1:openlen
+                   if open(m).row==close(closelen).row+direct(i,1) ...
+                   && open(m).col==close(closelen).col+direct(i,2)
+                       flag=true;
+                       break;
+                   end
+               end
+               %已经存在open中的话，则退出当前循环
+               if flag
+                    continue;
+               else  %否则添加到open中
+                    open(openlen+1).row=close(closelen).row+direct(i,1);
+                    open(openlen+1).col=close(closelen).col+direct(i,2);
+                    openlen=openlen+1;
+                    %计算所添加节点对应的g（距离起点的代价）和h（距离终点的代价）
+                    open(openlen).g=close(closelen).g+1;
+                    open(openlen).h=abs(endrow-open(openlen).row)+abs(endcol-open(openlen).col);
+                    h=open(openlen).h;
+               end
+            end
+        end
+    end
